@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.serif-title {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Wallet Connector 样式覆盖 - 使用更强的选择器 */
+header button,
+header .MuiButton-root,
+header button[class*="connect"],
+header button[class*="wallet"],
+header button[class*="Wallet"],
+header div[class*="Connect"] button,
+header div[class*="wallet"] button {
+  background-color: #4ccce6 !important;
+  color: white !important;
+  border: none !important;
+  font-weight: bold !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 0.5rem !important;
+  transition: background-color 0.2s ease !important;
+}
+
+header button:hover,
+header .MuiButton-root:hover,
+header button[class*="connect"]:hover,
+header button[class*="wallet"]:hover,
+header button[class*="Wallet"]:hover {
+  background-color: rgba(76, 204, 230, 0.9) !important;
+}
+
+/* 如果上面不生效，使用全局选择器 */
+body button.MuiButton-contained,
+body button.MuiButton-root {
+  background-color: #4ccce6 !important;
+  color: white !important;
+}
+
+body button.MuiButton-contained:hover,
+body button.MuiButton-root:hover {
+  background-color: rgba(76, 204, 230, 0.9) !important;
+}
