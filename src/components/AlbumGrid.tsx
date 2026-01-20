@@ -83,11 +83,34 @@ export default function AlbumGrid() {
     }
   }, [blobsData, page]);
 
-  // 重置分页当账户改变时
+  // 重置分页当账户改变或断开连接时
   useEffect(() => {
-    setPage(0);
-    setAllBlobs([]);
-    setHasMore(true);
+    if (connected && account) {
+      // 连接或切换账户时
+      console.log("Account connected/changed:", account);
+      setPage(0);
+      setAllBlobs([]);
+      setHasMore(true);
+      setBlobDetails(new Map());
+      setBlobContents(new Map());
+      setPreviewBlob(null);
+      setIsPreviewOpen(false);
+      setSearchTerm("");
+      // 手动触发 refetch 以确保数据加载
+      refetch();
+    } else {
+      // 断开连接时，清空所有数据
+      console.log("Wallet disconnected, clearing all data");
+      setPage(0);
+      setAllBlobs([]);
+      setHasMore(true);
+      setBlobDetails(new Map());
+      setBlobContents(new Map());
+      setPreviewBlob(null);
+      setIsPreviewOpen(false);
+      setSearchTerm("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, account?.address]);
 
   const blobs = allBlobs;
@@ -272,9 +295,7 @@ export default function AlbumGrid() {
       </div>
 
       {/* Search Filters */}
-      {connected && (
-        <SearchFilters onSearchChange={setSearchTerm} />
-      )}
+      {connected && <SearchFilters onSearchChange={setSearchTerm} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
         {/* Create New Blob - 第一个位置 */}
@@ -299,8 +320,8 @@ export default function AlbumGrid() {
           </p>
         </div>
 
-        {/* Loading state */}
-        {isLoading && (
+        {/* Loading state - 只在首次加载时显示全屏loading */}
+        {isLoading && page === 0 && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 space-y-4">
             <div className="relative">
               <div className="w-16 h-16 border-4 border-gray-200 dark:border-gray-700 rounded-full"></div>
@@ -313,96 +334,95 @@ export default function AlbumGrid() {
         )}
 
         {/* Display blobs */}
-        {!isLoading &&
-          filteredBlobs.map((blob: any, index: number) => {
-            const fileName = extractFileName(blob);
-            const details = blobDetails.get(fileName);
-            const contentUrl = blobContents.get(fileName);
+        {filteredBlobs.map((blob: any, index: number) => {
+          const fileName = extractFileName(blob);
+          const details = blobDetails.get(fileName);
+          const contentUrl = blobContents.get(fileName);
 
-            return (
+          return (
+            <div
+              key={fileName}
+              className="group cursor-pointer"
+              onClick={() => contentUrl && handlePreview(blob)}
+            >
               <div
-                key={fileName}
-                className="group cursor-pointer"
-                onClick={() => contentUrl && handlePreview(blob)}
+                className="relative aspect-[4/5] rounded-xl overflow-hidden mb-4 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1"
+                style={{
+                  border:
+                    "12px solid " + borderColors[index % borderColors.length],
+                }}
               >
-                <div
-                  className="relative aspect-[4/5] rounded-xl overflow-hidden mb-4 shadow-md transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1"
-                  style={{
-                    border:
-                      "12px solid " + borderColors[index % borderColors.length],
-                  }}
-                >
-                  {contentUrl ? (
-                    // 显示 blob 内容（图片或视频）
-                    isVideoFile(fileName) ? (
-                      <video
-                        src={contentUrl}
-                        className="w-full h-full object-cover"
-                        muted
-                        preload="metadata"
-                      />
-                    ) : (
-                      <img
-                        src={contentUrl}
-                        alt={blob.blob_name}
-                        className="w-full h-full object-cover"
-                      />
-                    )
-                  ) : details ? (
-                    // 如果有详细信息但内容还在加载
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center p-4">
-                      {blob.isDeleted ? (
-                        <div className="text-center">
-                          <span className="material-symbols-outlined text-6xl text-gray-400">
-                            delete
-                          </span>
-                          <p className="text-sm text-gray-500 mt-2">Deleted</p>
-                        </div>
-                      ) : (
-                        <div className="text-center space-y-2">
-                          <span className="material-symbols-outlined text-6xl text-primary">
-                            check_circle
-                          </span>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {blob.isWritten ? "Stored" : "Pending"}
-                          </p>
-                          <div className="text-xs text-gray-500 space-y-1">
-                            <p>Chunks: {blob.encoding?.erasure_n || 16}</p>
-                            <p>Size: {blob.size} bytes</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                {contentUrl ? (
+                  // 显示 blob 内容（图片或视频）
+                  isVideoFile(fileName) ? (
+                    <video
+                      src={contentUrl}
+                      className="w-full h-full object-cover"
+                      muted
+                      preload="metadata"
+                    />
                   ) : (
-                    // 加载中的占位符
-                    <div className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500 bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-6xl text-gray-400 animate-pulse">
-                        image
-                      </span>
-                    </div>
-                  )}
-                  <div className="absolute top-4 right-4 bg-primary/90 backdrop-blur px-2 py-1 rounded text-[10px] font-bold tracking-widest uppercase text-white">
-                    {isVideoFile(fileName) ? "VIDEO" : "IMAGE"}
-                  </div>
-                  {blob.isWritten && (
-                    <div className="absolute top-4 left-4 bg-green-500/90 backdrop-blur px-2 py-1 rounded text-[10px] font-bold tracking-widest uppercase text-white">
-                      ✓
-                    </div>
-                  )}
-                </div>
-                <h3 className="text-xl font-bold serif-title group-hover:text-primary transition-colors truncate">
-                  {extractTitle(fileName)}
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  <span className="italic">
-                    {dayjs(Number(blob.creationMicros) / 1000).format(
-                      "YYYY-MM-DD HH:mm:ss",
+                    <img
+                      src={contentUrl}
+                      alt={blob.blob_name}
+                      className="w-full h-full object-cover"
+                    />
+                  )
+                ) : details ? (
+                  // 如果有详细信息但内容还在加载
+                  <div className="w-full h-full bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center p-4">
+                    {blob.isDeleted ? (
+                      <div className="text-center">
+                        <span className="material-symbols-outlined text-6xl text-gray-400">
+                          delete
+                        </span>
+                        <p className="text-sm text-gray-500 mt-2">Deleted</p>
+                      </div>
+                    ) : (
+                      <div className="text-center space-y-2">
+                        <span className="material-symbols-outlined text-6xl text-primary">
+                          check_circle
+                        </span>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {blob.isWritten ? "Stored" : "Pending"}
+                        </p>
+                        <div className="text-xs text-gray-500 space-y-1">
+                          <p>Chunks: {blob.encoding?.erasure_n || 16}</p>
+                          <p>Size: {blob.size} bytes</p>
+                        </div>
+                      </div>
                     )}
-                  </span>
-                </p>
+                  </div>
+                ) : (
+                  // 加载中的占位符
+                  <div className="w-full h-full object-cover grayscale-[0.2] group-hover:grayscale-0 transition-all duration-500 bg-gradient-to-br from-primary/20 to-blue-500/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-6xl text-gray-400 animate-pulse">
+                      image
+                    </span>
+                  </div>
+                )}
+                <div className="absolute top-4 right-4 bg-primary/90 backdrop-blur px-2 py-1 rounded text-[10px] font-bold tracking-widest uppercase text-white">
+                  {isVideoFile(fileName) ? "VIDEO" : "IMAGE"}
+                </div>
+                {blob.isWritten && (
+                  <div className="absolute top-4 left-4 bg-green-500/90 backdrop-blur px-2 py-1 rounded text-[10px] font-bold tracking-widest uppercase text-white">
+                    ✓
+                  </div>
+                )}
               </div>
-            );
-          })}
+              <h3 className="text-xl font-bold serif-title group-hover:text-primary transition-colors truncate">
+                {extractTitle(fileName)}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="italic">
+                  {dayjs(Number(blob.creationMicros) / 1000).format(
+                    "YYYY-MM-DD HH:mm:ss",
+                  )}
+                </span>
+              </p>
+            </div>
+          );
+        })}
 
         {/* Empty state */}
         {!isLoading && connected && blobs.length === 0 && (
@@ -438,7 +458,7 @@ export default function AlbumGrid() {
         {/* Load More Trigger */}
         {connected && filteredBlobs.length > 0 && hasMore && (
           <div ref={loadMoreRef} className="col-span-full text-center py-8">
-            {/* {isLoadingMore && (
+            {isLoadingMore && (
               <div className="flex flex-col items-center justify-center gap-3">
                 <div className="relative">
                   <div className="w-12 h-12 border-2 border-gray-200 dark:border-gray-700 rounded-full"></div>
@@ -448,7 +468,7 @@ export default function AlbumGrid() {
                   Loading more memories...
                 </span>
               </div>
-            )} */}
+            )}
           </div>
         )}
       </div>

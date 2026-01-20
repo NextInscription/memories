@@ -23,6 +23,7 @@ createRoot(document.getElementById('root')!).render(
       <AptosWalletAdapterProvider
         autoConnect={true}
         dappConfig={{ network: Network.SHELBYNET }}
+        hideWallets={["Continue with Google", "Continue with Apple"]}
         onError={(error) => {
           console.error('Wallet adapter error:', error)
         }}
